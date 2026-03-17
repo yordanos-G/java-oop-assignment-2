@@ -1,4 +1,4 @@
-# Assignment 01: Encapsulation and Inheritance (Banking System)
+# Assignment 02: Encapsulation and Inheritance (Banking System)
 
 ## 🎯 Objectives
 * **Encapsulation**: Practice protecting internal data states using access modifiers.
