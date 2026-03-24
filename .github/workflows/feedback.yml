@@ -1,24 +1,65 @@
 name: Autograding Feedback
+
 on: [push]
+
 jobs:
   feedback:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Run Tests
-        run: mvn test
-        continue-on-error: true # So the workflow doesn't stop if tests fail
+        run: mvn -q test
+        continue-on-error: true
 
-      # Example: Custom logic to check for specific failures
-      - name: Check for Encapsulation Failure
-        if: failure()
+      - name: Calculate Score & Feedback
         run: |
-          echo "::warning title=Encapsulation Error::Check your access modifiers! Ensure 'balance' is protected, not public."
+          SCORE=0
+
+          REPORTS=$(find target/surefire-reports -name "*.txt")
+
+          # ✅ Encapsulation (20)
+          if grep -q "testEncapsulation" $REPORTS && ! grep -q "testEncapsulation.*FAIL" $REPORTS; then
+            SCORE=$((SCORE+20))
+          else
+            echo "::warning title=Encapsulation Issue::Your 'balance' field must not be public."
+          fi
+
+          # ✅ Savings Logic (25)
+          if grep -q "testSavingsInterest" $REPORTS && ! grep -q "testSavingsInterest.*FAIL" $REPORTS; then
+            SCORE=$((SCORE+25))
+          else
+            echo "::warning title=Savings Logic::Check your interest calculation."
+          fi
+
+          # ✅ Checking Logic (35)
+          PASS1=$(grep -q "testCheckingTransactionFee" $REPORTS && ! grep -q "testCheckingTransactionFee.*FAIL" $REPORTS && echo 1 || echo 0)
+          PASS2=$(grep -q "testCheckingInsufficientWithFee" $REPORTS && ! grep -q "testCheckingInsufficientWithFee.*FAIL" $REPORTS && echo 1 || echo 0)
+
+          if [ $PASS1 -eq 1 ] && [ $PASS2 -eq 1 ]; then
+            SCORE=$((SCORE+35))
+          else
+            echo "::warning title=Checking Logic::Ensure transaction fees and insufficient balance logic are correct."
+          fi
+
+          # ✅ Base Logic (20)
+          PASS3=$(grep -q "testBaseDeposit" $REPORTS && ! grep -q "testBaseDeposit.*FAIL" $REPORTS && echo 1 || echo 0)
+          PASS4=$(grep -q "testBaseWithdrawalSafety" $REPORTS && ! grep -q "testBaseWithdrawalSafety.*FAIL" $REPORTS && echo 1 || echo 0)
+
+          if [ $PASS3 -eq 1 ] && [ $PASS4 -eq 1 ]; then
+            SCORE=$((SCORE+20))
+          else
+            echo "::warning title=Core Logic::Fix deposit/withdraw logic (no overdrafts)."
+          fi
+
+          echo "Final Score: $SCORE/100"
+
+          # Optional: GitHub summary
+          echo "## 🧪 Autograding Result" >> $GITHUB_STEP_SUMMARY
+          echo "**Score: $SCORE / 100**" >> $GITHUB_STEP_SUMMARY
