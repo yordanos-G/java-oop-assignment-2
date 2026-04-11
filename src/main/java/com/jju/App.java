@@ -40,8 +40,7 @@ public class App {
             System.out.println("Account Holder: " + acc.getAccountHolder() + 
                                " | Balance: $" + acc.getBalance());
         }
+        
     }
-
 }
-
 
